@@ -21,6 +21,8 @@ import ShareRoute from './ShareRoute';
 import ChatRoute from './ChatRoute';
 import Search from './Search';
 import Root from './Root';
+import BlocksView from '~/components/Blocks/BlocksView';
+import BlockDetailView from '~/components/Blocks/BlockDetailView';
 
 const AuthLayout = () => (
   <AuthContextProvider>
@@ -133,6 +135,14 @@ export const router = createBrowserRouter(
             {
               path: 'search',
               element: <Search />,
+            },
+            {
+              path: 'blocks',
+              element: <BlocksView />,
+            },
+            {
+              path: 'blocks/:blockId',
+              element: <BlockDetailView />,
             },
             {
               path: 'prompts',
