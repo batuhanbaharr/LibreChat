@@ -12,6 +12,9 @@
   <a href="README.zh.md">中文</a>
 </p>
 
+> **This fork also has a feature called PromptBlocks.**
+> See [PROMPTBLOCKS.md](PROMPTBLOCKS.md) for what it is and how to set it up.
+
 <p align="center">
   <a href="https://discord.librechat.ai"> 
     <img
