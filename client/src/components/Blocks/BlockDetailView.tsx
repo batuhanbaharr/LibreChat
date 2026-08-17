@@ -1,7 +1,9 @@
 import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useSetRecoilState } from 'recoil';
 import { Sparkles, MessageSquare, FileText, History, MessageCircle } from 'lucide-react';
 import { decodeBlockId } from 'librechat-data-provider';
 import { useGetBlocksQuery } from '~/data-provider';
+import store from '~/store';
 
 function formatTime(detectedAt: string): string {
   return new Date(detectedAt).toLocaleTimeString('de-DE', {
@@ -13,6 +15,11 @@ function formatTime(detectedAt: string): string {
 export default function BlockDetailView() {
   const { blockId } = useParams();
   const navigate = useNavigate();
+  // eine alte submission (vom letzten echten chat-turn) bleibt sonst im recoil state
+  // hängen und wird von useResumableSSE beim neu-mounten der chatview als "neue anfrage"
+  // nochmal losgeschickt - genau das macht useNavigateToConvo beim normalen
+  // konversationswechsel auch, siehe dort
+  const setSubmission = useSetRecoilState(store.submissionByIndex(0));
   const { data, isLoading } = useGetBlocksQuery();
 
   const decoded = blockId ? decodeBlockId(blockId) : null;
@@ -57,7 +64,10 @@ export default function BlockDetailView() {
 
       <div className="flex flex-col gap-2">
         <button
-          onClick={() => navigate(`/c/${block.conversationId}`)}
+          onClick={() => {
+            setSubmission(null);
+            navigate(`/c/${block.conversationId}`);
+          }}
           className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-3 text-sm text-white hover:bg-blue-700"
         >
           <MessageCircle size={16} />

@@ -23,6 +23,7 @@ import { createBalanceModel } from './balance';
 import { createMessageModel } from './message';
 import { createBlockDecisionModel } from './blockDecision';
 import { createBlockSummaryModel } from './blockSummary';
+import { createBlockTitleModel } from './blockTitle';
 import { createActionModel } from './action';
 import { createBannerModel } from './banner';
 import { createPresetModel } from './preset';
@@ -51,6 +52,7 @@ export function createModels(mongoose: typeof import('mongoose')): {
   Message: ReturnType<typeof createMessageModel>;
   BlockDecision: ReturnType<typeof createBlockDecisionModel>;
   BlockSummary: ReturnType<typeof createBlockSummaryModel>;
+  BlockTitle: ReturnType<typeof createBlockTitleModel>;
   Agent: ReturnType<typeof createAgentModel>;
   AgentApiKey: ReturnType<typeof createAgentApiKeyModel>;
   AgentCategory: ReturnType<typeof createAgentCategoryModel>;
@@ -92,6 +94,7 @@ export function createModels(mongoose: typeof import('mongoose')): {
     Message: createMessageModel(mongoose),
     BlockDecision: createBlockDecisionModel(mongoose),
     BlockSummary: createBlockSummaryModel(mongoose),
+    BlockTitle: createBlockTitleModel(mongoose),
     Agent: createAgentModel(mongoose),
     AgentApiKey: createAgentApiKeyModel(mongoose),
     AgentCategory: createAgentCategoryModel(mongoose),

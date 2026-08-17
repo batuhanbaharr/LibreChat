@@ -47,6 +47,7 @@ import { createConversationTagMethods, type ConversationTagMethods } from './con
 import { createMessageMethods, type MessageMethods } from './message';
 import { createBlockDecisionMethods, type BlockDecisionMethods } from './blockDecision';
 import { createBlockSummaryMethods, type BlockSummaryMethods } from './blockSummary';
+import { createBlockTitleMethods, type BlockTitleMethods } from './blockTitle';
 import { createConversationMethods, type ConversationMethods } from './conversation';
 import { createChatProjectMethods, type ChatProjectMethods } from './chatProject';
 export type {
@@ -148,6 +149,7 @@ export type AllMethods = UserMethods &
   MessageMethods &
   BlockDecisionMethods &
   BlockSummaryMethods &
+  BlockTitleMethods &
   ConversationMethods &
   ChatProjectMethods &
   TxMethods &
@@ -281,6 +283,7 @@ export function createMethods(
     ...messageMethods,
     ...createBlockDecisionMethods(mongoose),
     ...createBlockSummaryMethods(mongoose),
+    ...createBlockTitleMethods(mongoose),
     ...conversationMethods,
     ...createChatProjectMethods(mongoose),
     /* Tier 3 */

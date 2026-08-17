@@ -4,4 +4,5 @@ export * from './scoring';
 export * from './tieBreaker';
 export * from './service';
 export * from './summary';
+export * from './title';
 export * from './handlers';

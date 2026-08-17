@@ -1,4 +1,5 @@
 import { useParams, Link } from 'react-router-dom';
+import { decodeBlockId } from 'librechat-data-provider';
 import { useBlockMessagesQuery } from '~/data-provider';
 import BlockMessageList from './BlockMessageList';
 
@@ -7,6 +8,7 @@ export default function BlockPromptsView() {
   const { data, isLoading, error } = useBlockMessagesQuery(blockId);
 
   const prompts = (data?.messages ?? []).filter((m) => m.isCreatedByUser);
+  const conversationId = blockId ? decodeBlockId(blockId)?.conversationId : undefined;
 
   return (
     <div className="mx-auto max-w-2xl p-8 text-text-primary">
@@ -23,7 +25,11 @@ export default function BlockPromptsView() {
       {error != null && <p className="text-sm text-red-500">Fehler beim Laden.</p>}
 
       {!isLoading && error == null && (
-        <BlockMessageList messages={prompts} emptyText="Keine Prompts in diesem Block." />
+        <BlockMessageList
+          messages={prompts}
+          emptyText="Keine Prompts in diesem Block."
+          conversationId={conversationId}
+        />
       )}
     </div>
   );

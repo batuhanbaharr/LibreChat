@@ -4,6 +4,7 @@ const {
   createEmbeddingClient,
   createTopicTieBreaker,
   createBlockSummarizer,
+  createBlockTitleGenerator,
 } = require('@librechat/api');
 const { requireJwtAuth } = require('~/server/middleware');
 const {
@@ -14,6 +15,8 @@ const {
   saveBlockDecision,
   getBlockSummary,
   saveBlockSummary,
+  getBlockTitle,
+  saveBlockTitle,
 } = require('~/models');
 
 const router = express.Router();
@@ -21,6 +24,7 @@ const router = express.Router();
 const { getEmbedding } = createEmbeddingClient(process.env.GOOGLE_KEY);
 const tieBreaker = createTopicTieBreaker(process.env.GOOGLE_KEY);
 const summarizer = createBlockSummarizer(process.env.GOOGLE_KEY);
+const titleGenerator = createBlockTitleGenerator(process.env.GOOGLE_KEY);
 
 const handlers = createBlocksHandlers({
   getConvosByCursor,
@@ -33,6 +37,9 @@ const handlers = createBlocksHandlers({
   summarizer,
   getBlockSummary,
   saveBlockSummary,
+  titleGenerator,
+  getBlockTitle,
+  saveBlockTitle,
 });
 
 router.get('/', requireJwtAuth, handlers.getBlocks);

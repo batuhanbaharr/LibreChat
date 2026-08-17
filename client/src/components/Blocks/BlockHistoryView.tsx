@@ -1,10 +1,19 @@
 import { useParams, Link } from 'react-router-dom';
-import { useBlockMessagesQuery } from '~/data-provider';
+import { decodeBlockId } from 'librechat-data-provider';
+import { useBlockMessagesQuery, useGetBlocksQuery } from '~/data-provider';
 import BlockMessageList from './BlockMessageList';
 
 export default function BlockHistoryView() {
   const { blockId } = useParams();
   const { data, isLoading, error } = useBlockMessagesQuery(blockId);
+  const { data: blocksData } = useGetBlocksQuery();
+
+  const decoded = blockId ? decodeBlockId(blockId) : null;
+  const blockTitle = decoded
+    ? blocksData?.blocks.find(
+        (b) => b.conversationId === decoded.conversationId && b.detectedAt === decoded.detectedAt,
+      )?.title
+    : undefined;
 
   return (
     <div className="mx-auto max-w-2xl p-8 text-text-primary">
@@ -28,6 +37,8 @@ export default function BlockHistoryView() {
           messages={data?.messages ?? []}
           emptyText="Keine History für diesen Block."
           showRole
+          showReasoning
+          blockTitle={blockTitle}
         />
       )}
     </div>

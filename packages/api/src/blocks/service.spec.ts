@@ -1,6 +1,17 @@
 import { detectBlocksInConversation, getDetectedBlocksForUser, getBlockMessages } from './service';
 import type { BlocksServiceDeps } from './service';
+import type { BlockTitleDeps } from './title';
 import type { TopicTieBreaker } from './tieBreaker';
+
+// generateTitle liefert standardmäßig null (wie ohne api-key) - tests die den titel
+// nicht prüfen, sollen sich nicht auf ein llm verlassen müssen
+function createFakeTitleDeps() {
+  return {
+    titleGenerator: { generateTitle: jest.fn().mockResolvedValue(null) },
+    getBlockTitle: jest.fn().mockResolvedValue(null),
+    saveBlockTitle: jest.fn().mockResolvedValue(undefined),
+  };
+}
 
 // simuliert echte gemini embeddings: ähnliche texte -> ähnliche vektoren
 const EMBEDDINGS: Record<string, number[]> = {
@@ -49,6 +60,19 @@ function fakeGetEmbedding(text: string): Promise<number[]> {
 // baut eine testnachricht, messageId = text macht die fixtures einfacher zu lesen
 function msg(text: string, isCreatedByUser: boolean, createdAt: Date) {
   return { messageId: text, text, isCreatedByUser, createdAt };
+}
+
+// so wie eine echte bot-antwort vom agents-endpoint aus der db kommt: text ist leer,
+// der eigentliche text steckt nur in content (siehe BaseClient.js, responseMessage.text
+// wird dort explizit auf '' gesetzt)
+function botMsgWithContentOnly(messageId: string, text: string, createdAt: Date) {
+  return {
+    messageId,
+    text: '',
+    isCreatedByUser: false,
+    createdAt,
+    content: [{ type: 'text', text }],
+  };
 }
 
 interface TestDepsOptions {
@@ -387,7 +411,7 @@ describe('detectBlocksInConversation', () => {
 });
 
 describe('getDetectedBlocksForUser', () => {
-  function createServiceDeps(overrides: Partial<BlocksServiceDeps> = {}): BlocksServiceDeps {
+  function createServiceDeps(overrides: Partial<BlockTitleDeps> = {}): BlockTitleDeps {
     return {
       getConvosByCursor: jest.fn().mockResolvedValue({
         conversations: [{ conversationId: 'c1' }],
@@ -397,8 +421,9 @@ describe('getDetectedBlocksForUser', () => {
         .fn()
         .mockResolvedValue([msg('wie debugge ich react hooks', true, new Date())]),
       ...createTestDeps(),
+      ...createFakeTitleDeps(),
       ...overrides,
-    } as BlocksServiceDeps;
+    } as BlockTitleDeps;
   }
 
   it('holt die konversationen des users und baut daraus blocks', async () => {
@@ -459,6 +484,23 @@ describe('getBlockMessages', () => {
     ]);
   });
 
+  it('liest den text einer bot-antwort aus content, wenn das text-feld leer ist (agents-endpoint)', async () => {
+    const t0 = new Date('2026-01-01T09:00:00Z');
+    const t1 = new Date('2026-01-01T09:01:00Z');
+
+    const messages = [
+      msg('wie debugge ich react hooks', true, t0),
+      botMsgWithContentOnly('bot-antwort', 'Hier eine Antwort vom Bot.', t1),
+    ];
+    const deps = createDeps(jest.fn().mockResolvedValue(messages));
+
+    const block = await getBlockMessages('u1', 'c1', t0.toISOString(), deps);
+
+    expect(block?.map((m) => m.messageId)).toEqual(['wie debugge ich react hooks', 'bot-antwort']);
+    const botMessage = block?.find((m) => m.messageId === 'bot-antwort');
+    expect(botMessage?.text).toBe('Hier eine Antwort vom Bot.');
+  });
+
   it('gibt auch nicht-zusammenhängende nachrichten zurück, wenn ein block später wieder aufgegriffen wurde', async () => {
     const base = new Date('2026-01-01T09:00:00Z');
     const messages = [
@@ -475,6 +517,78 @@ describe('getBlockMessages', () => {
       'wie debugge ich react hooks',
       'zurück zu den react hooks',
     ]);
+  });
+
+  it('reasoning: die erste nachricht eines neuen blocks bekommt new_block mit dem score zum block davor', async () => {
+    const base = new Date('2026-01-01T09:00:00Z');
+    const messages = [
+      msg('wie debugge ich react hooks', true, base),
+      msg('wie verbinde ich mongodb', true, new Date(base.getTime() + 60_000)),
+    ];
+    const deps = createDeps(jest.fn().mockResolvedValue(messages));
+
+    const block2 = await getBlockMessages(
+      'u1',
+      'c1',
+      new Date(base.getTime() + 60_000).toISOString(),
+      deps,
+    );
+
+    const opener = block2?.find((m) => m.messageId === 'wie verbinde ich mongodb');
+    expect(opener?.reasoning).toEqual({
+      reason: 'new_block',
+      score: 0,
+      tieBreakerUsed: false,
+    });
+  });
+
+  it('reasoning: eine normale anschluss-nachricht bekommt same_block mit ihrem eigenen score', async () => {
+    const base = new Date('2026-01-01T09:00:00Z');
+    const messages = [
+      msg('wie debugge ich react hooks', true, base),
+      msg('und wenn der hook zweimal feuert', true, new Date(base.getTime() + 60_000)),
+    ];
+    const deps = createDeps(jest.fn().mockResolvedValue(messages));
+
+    const block = await getBlockMessages('u1', 'c1', base.toISOString(), deps);
+
+    const follower = block?.find((m) => m.messageId === 'und wenn der hook zweimal feuert');
+    expect(follower?.reasoning?.reason).toBe('same_block');
+    expect(follower?.reasoning?.tieBreakerUsed).toBe(false);
+    expect(follower?.reasoning?.score).not.toBeNull();
+    expect(follower?.reasoning?.score as number).toBeCloseTo(0.9945, 3);
+  });
+
+  it('reasoning: eine reaktivierung bekommt reactivated_block mit dem score zum wiederaufgenommenen block', async () => {
+    const base = new Date('2026-01-01T09:00:00Z');
+    const messages = [
+      msg('wie debugge ich react hooks', true, base),
+      msg('wie verbinde ich mongodb', true, new Date(base.getTime() + 60_000)),
+      msg('wie sichere ich eine datenbank', true, new Date(base.getTime() + 120_000)),
+      msg('zurück zu den react hooks', true, new Date(base.getTime() + 60 * 60_000)),
+    ];
+    const deps = createDeps(jest.fn().mockResolvedValue(messages));
+
+    const block = await getBlockMessages('u1', 'c1', base.toISOString(), deps);
+
+    const reactivator = block?.find((m) => m.messageId === 'zurück zu den react hooks');
+    expect(reactivator?.reasoning?.reason).toBe('reactivated_block');
+    expect(reactivator?.reasoning?.tieBreakerUsed).toBe(false);
+    expect(reactivator?.reasoning?.score as number).toBeCloseTo(0.9149, 3);
+  });
+
+  it('reasoning: bot-antworten haben keine eigene entscheidung, reasoning bleibt null', async () => {
+    const base = new Date('2026-01-01T09:00:00Z');
+    const messages = [
+      msg('wie debugge ich react hooks', true, base),
+      msg('hier eine antwort vom bot', false, new Date(base.getTime() + 30_000)),
+    ];
+    const deps = createDeps(jest.fn().mockResolvedValue(messages));
+
+    const block = await getBlockMessages('u1', 'c1', base.toISOString(), deps);
+
+    const botMessage = block?.find((m) => m.messageId === 'hier eine antwort vom bot');
+    expect(botMessage?.reasoning).toBeNull();
   });
 
   it('gibt null zurück wenn der block nicht existiert', async () => {

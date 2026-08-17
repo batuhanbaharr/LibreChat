@@ -788,6 +788,12 @@ export default function useEventHandlers({
 
         if (finalMessages.length > 0) {
           setFinalMessages(conversation.conversationId, finalMessages);
+          // ein neuer austausch kann einen block wachsen lassen oder einen neuen öffnen -
+          // das blocks panel soll das ohne page reload mitbekommen. invalidateQueries
+          // ist billig wenn das panel gerade nicht offen ist (kein aktiver observer,
+          // kein request), holt aber sofort neu wenn es offen ist - gleiches muster wie
+          // die projects-invalidierung weiter unten
+          queryClient.invalidateQueries([QueryKeys.blocks]);
         } else if (
           isAssistantsEndpoint(submissionConvo.endpoint) &&
           (!submissionConvo.conversationId ||

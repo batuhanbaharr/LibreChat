@@ -5,8 +5,9 @@ import type { ServerRequest } from '~/types';
 import { getDetectedBlocksForUser, getBlockMessages } from './service';
 import { getOrGenerateBlockSummary } from './summary';
 import type { BlockSummaryDeps } from './summary';
+import type { BlockTitleDeps } from './title';
 
-export function createBlocksHandlers(deps: BlockSummaryDeps): {
+export function createBlocksHandlers(deps: BlockSummaryDeps & BlockTitleDeps): {
   getBlocks: (req: ServerRequest, res: Response) => Promise<Response>;
   getMessages: (req: ServerRequest, res: Response) => Promise<Response>;
   getSummary: (req: ServerRequest, res: Response) => Promise<Response>;

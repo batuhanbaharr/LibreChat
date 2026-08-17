@@ -12,6 +12,7 @@ import {
   useAdaptiveSSE,
   useChatHelpers,
   useLocalize,
+  useScrollToHashMessage,
 } from '~/hooks';
 import { ChatContext, AddedChatContext, ChatFormProvider, useFileMapContext } from '~/Providers';
 import ConversationStarters from './Input/ConversationStarters';
@@ -72,6 +73,7 @@ function ChatView({ index = 0, project }: { index?: number; project?: TChatProje
   // Auto-resume if navigating back to conversation with active job
   // Wait for messages to load before resuming to avoid race condition
   useResumeOnLoad(conversationId, chatHelpers.getMessages, index, !isLoading);
+  useScrollToHashMessage(!isLoading && !!messagesTree && messagesTree.length > 0);
 
   let content: JSX.Element | null | undefined;
   const isLandingPage =

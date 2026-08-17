@@ -268,11 +268,24 @@ export type BlocksResponse = {
   blocks: TDetectedBlock[];
 };
 
+// warum eine nachricht in ihrem block gelandet ist, für die history-erklärung im frontend.
+// same_block = normaler anschluss an den block davor, new_block = thema war anders,
+// reactivated_block = ein früherer block wurde nach einer pause wieder aufgegriffen
+export type TBlockJoinReason = 'new_block' | 'same_block' | 'reactivated_block';
+
+export type TBlockJoinReasoning = {
+  reason: TBlockJoinReason;
+  score: number | null;
+  tieBreakerUsed: boolean;
+};
+
 export type TBlockMessage = {
   messageId: string;
   text: string;
   isCreatedByUser: boolean;
   createdAt: string;
+  // null bei bot-antworten, die treffen ja keine block-entscheidung
+  reasoning: TBlockJoinReasoning | null;
 };
 
 export type BlockMessagesResponse = {
