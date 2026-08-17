@@ -23,6 +23,10 @@ import Search from './Search';
 import Root from './Root';
 import BlocksView from '~/components/Blocks/BlocksView';
 import BlockDetailView from '~/components/Blocks/BlockDetailView';
+import BlockMessagesView from '~/components/Blocks/BlockMessagesView';
+import BlockPromptsView from '~/components/Blocks/BlockPromptsView';
+import BlockSummaryView from '~/components/Blocks/BlockSummaryView';
+import BlockHistoryView from '~/components/Blocks/BlockHistoryView';
 
 const AuthLayout = () => (
   <AuthContextProvider>
@@ -143,6 +147,22 @@ export const router = createBrowserRouter(
             {
               path: 'blocks/:blockId',
               element: <BlockDetailView />,
+            },
+            {
+              path: 'blocks/:blockId/messages',
+              element: <BlockMessagesView />,
+            },
+            {
+              path: 'blocks/:blockId/prompts',
+              element: <BlockPromptsView />,
+            },
+            {
+              path: 'blocks/:blockId/summary',
+              element: <BlockSummaryView />,
+            },
+            {
+              path: 'blocks/:blockId/history',
+              element: <BlockHistoryView />,
             },
             {
               path: 'prompts',

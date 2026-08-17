@@ -253,3 +253,29 @@ export type GraphTokenResponse = {
   expires_in: number;
   scope: string;
 };
+
+export type TDetectedBlock = {
+  title: string;
+  detectedAt: string;
+  conversationId: string;
+  messageCount: number;
+};
+
+export type BlocksResponse = {
+  blocks: TDetectedBlock[];
+};
+
+export type TBlockMessage = {
+  messageId: string;
+  text: string;
+  isCreatedByUser: boolean;
+  createdAt: string;
+};
+
+export type BlockMessagesResponse = {
+  messages: TBlockMessage[];
+};
+
+export type BlockSummaryResponse = {
+  summary: string;
+};

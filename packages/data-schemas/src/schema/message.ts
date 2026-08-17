@@ -58,6 +58,11 @@ const messageSchema: Schema<IMessage> = new Schema(
     summary: {
       type: String,
     },
+    // cache für block-erkennung, wird nicht standardmäßig mitgeladen weil es groß ist
+    blockEmbedding: {
+      type: [Number],
+      select: false,
+    },
     isCreatedByUser: {
       type: Boolean,
       required: true,

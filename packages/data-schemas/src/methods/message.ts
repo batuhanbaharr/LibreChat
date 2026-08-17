@@ -63,6 +63,7 @@ export interface MessageMethods {
     hydrate?: boolean,
   ): Promise<unknown>;
   deleteMessages(filter: FilterQuery<IMessage>): Promise<DeleteResult>;
+  setMessageBlockEmbedding(messageId: string, embedding: number[]): Promise<void>;
 }
 
 export function createMessageMethods(mongoose: typeof import('mongoose')): MessageMethods {
@@ -357,6 +358,21 @@ export function createMessageMethods(mongoose: typeof import('mongoose')): Messa
     }
   }
 
+  // speichert das berechnete embedding am message-dokument, damit man es beim
+  // nächsten mal nicht nochmal bei gemini berechnen muss
+  async function setMessageBlockEmbedding(messageId: string, embedding: number[]): Promise<void> {
+    try {
+      const Message = mongoose.models.Message as Model<IMessage>;
+      // Message.updateOne() (mongoose) hängt sich hier auf: der meili post-update-hook
+      // erwartet ein dokument, bekommt bei Model.updateOne() aber nur das write-result und
+      // ruft dadurch nie next() auf. .collection.updateOne() geht direkt über den treiber
+      // und umgeht das ganze mongoose-hook problem
+      await Message.collection.updateOne({ messageId }, { $set: { blockEmbedding: embedding } });
+    } catch (err) {
+      logger.error('Error saving message block embedding:', err);
+    }
+  }
+
   /**
    * Retrieves a single message from the database.
    */
@@ -447,5 +463,6 @@ export function createMessageMethods(mongoose: typeof import('mongoose')): Messa
     getMessagesByCursor,
     searchMessages,
     deleteMessages,
+    setMessageBlockEmbedding,
   };
 }

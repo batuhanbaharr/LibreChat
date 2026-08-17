@@ -45,6 +45,8 @@ import { createPresetMethods, type PresetMethods } from './preset';
 /* Tier 2 — Moderate (service deps injected) */
 import { createConversationTagMethods, type ConversationTagMethods } from './conversationTag';
 import { createMessageMethods, type MessageMethods } from './message';
+import { createBlockDecisionMethods, type BlockDecisionMethods } from './blockDecision';
+import { createBlockSummaryMethods, type BlockSummaryMethods } from './blockSummary';
 import { createConversationMethods, type ConversationMethods } from './conversation';
 import { createChatProjectMethods, type ChatProjectMethods } from './chatProject';
 export type {
@@ -144,6 +146,8 @@ export type AllMethods = UserMethods &
   PresetMethods &
   ConversationTagMethods &
   MessageMethods &
+  BlockDecisionMethods &
+  BlockSummaryMethods &
   ConversationMethods &
   ChatProjectMethods &
   TxMethods &
@@ -275,6 +279,8 @@ export function createMethods(
     /* Tier 2 */
     ...createConversationTagMethods(mongoose),
     ...messageMethods,
+    ...createBlockDecisionMethods(mongoose),
+    ...createBlockSummaryMethods(mongoose),
     ...conversationMethods,
     ...createChatProjectMethods(mongoose),
     /* Tier 3 */

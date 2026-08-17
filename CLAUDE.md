@@ -183,3 +183,113 @@ Multi-line imports count total character length across all lines. Consolidate va
 ## Formatting
 
 Fix all formatting lint errors (trailing spaces, tabs, newlines, indentation) using auto-fix when available. All TypeScript/ESLint warnings and errors **must** be resolved.
+
+# PromptBlocks Projekt-Kontext
+
+# PromptBlocks — Projekt-Kontext für Claude Code
+
+Diese Datei wird von Claude Code automatisch gelesen, wenn du im Projektordner arbeitest.
+Sie beschreibt, was das Projekt ist, was schon gebaut wurde, und wie hier gearbeitet wird.
+
+## Was ist das Projekt
+
+PromptBlocks ist ein Feature, das auf LibreChat aufgebaut wird. Es ist Teil einer
+Bachelorarbeit an der TU Dortmund / LMU München (Titel: "Strukturierte Visualisierung
+und Verwaltung von Prompts für Large Language Models"). Betreuer wird als "hoca"
+bezeichnet, gehört zur GitHub-Organisation `haiigroup`.
+
+Die Grundidee: LibreChat erkennt automatisch thematische Blöcke innerhalb von Chats.
+Der Chat selbst bleibt ganz normal, keine Unterbrechung im Hauptfenster. Nur wenn der
+User ein Panel öffnet, sieht er die erkannten Blöcke — mit Zeitstempel, Titel,
+Nachrichtenanzahl. Klickt er auf einen Block, sieht er eine Detailansicht mit:
+Zusammenfassung generieren, Alle Nachrichten, Alle Prompts, History, und einen Button
+"Fokussierte Block-Chat erstellen" (öffnet einen neuen Chat zu diesem Thema).
+
+## Setup
+
+- Fork: `batuhanbaharr/LibreChat` (origin), zusätzlicher remote `repo` zeigt auf
+  `haiigroup/promptstack` (das ist die eigentliche Projekt-Repo vom Betreuer)
+- Branch: `promptblocks-feature` — alle Arbeit passiert hier, nie auf `main`
+- Lokaler Pfad: `~/Desktop/LibreChat`
+- MongoDB: Atlas Cloud (kostenlos), Connection String in `.env` unter `MONGO_URI`
+- LLM Provider: Google Gemini API (kostenlose Stufe, kein Kreditkarte hinterlegt),
+  Key in `.env` unter `GOOGLE_KEY`
+- Backend läuft auf Port 3080 (`npm run backend:dev`)
+- Frontend läuft auf Port 3090 mit Vite Hot-Reload (`npm run frontend:dev`)
+- Node Version: v26 (LibreChat braucht mindestens v24)
+
+## Was schon gebaut ist
+
+### Frontend
+
+- `client/src/components/SidePanel/PromptBlocks/PromptBlocksPanel.tsx` — kleines Panel
+  in der SidePanel-Leiste (registriert in `client/src/hooks/Nav/useSideNavLinks.ts`
+  mit Icon `Layers` aus lucide-react)
+- `client/src/components/Blocks/BlocksView.tsx` — Vollbild-Ansicht aller Blöcke,
+  Route `/blocks`
+- `client/src/components/Blocks/BlockDetailView.tsx` — Detailansicht für einen Block,
+  Route `/blocks/:blockId`, hat die 4 Buttons + "Fokussierte Block-Chat erstellen"
+- `client/src/components/Blocks/useBlocks.ts` — Hook, der `/api/blocks` über axios
+  abruft (NICHT fetch verwenden, siehe wichtige Notiz unten)
+- `client/src/components/Blocks/blocksData.ts` — alte Dummy-Daten, wird nicht mehr
+  gebraucht sobald useBlocks überall verwendet wird, evtl. aufräumen
+- Routen registriert in `client/src/routes/index.tsx`
+
+### Backend
+
+- `api/server/services/embeddingService.js` — ruft Gemini Embedding API auf
+  (`gemini-embedding-001`, NICHT `text-embedding-004`, das ist deprecated),
+  hat auch `cosineSimilarity()` Funktion
+- `api/server/routes/blocks.js` — Route `GET /api/blocks`, geschützt mit
+  `requireJwtAuth`. Holt alle Conversations eines Users, dann alle Messages pro
+  Conversation, berechnet Embeddings für jede User-Nachricht, vergleicht mit
+  cosineSimilarity. Wenn Ähnlichkeit unter `SIMILARITY_THRESHOLD` (aktuell 0.75)
+  fällt, beginnt ein neuer Block.
+- Registriert in `api/server/routes/index.js` (require + export) und in
+  `api/server/index.js` (`app.use('/api/blocks', routes.blocks)`)
+
+## Wichtige Learnings (nicht nochmal falsch machen)
+
+1. **Axios statt fetch im Frontend.** LibreChat setzt den Auth-Token global auf die
+   axios-Instanz (`packages/data-provider/src/request.ts`, Funktion `setTokenHeader`).
+   Eigener Code MUSS `import axios from 'axios'` benutzen, nicht `fetch()` — sonst
+   kommt "No auth token" (401), weil der Token nicht automatisch mitgeschickt wird.
+
+2. **Gemini Embedding Model Name.** `text-embedding-004` ist nicht mehr verfügbar.
+   Aktuelles Modell: `gemini-embedding-001`. Falls das wieder einen 404 gibt, in
+   Google AI Studio nachschauen welches Modell aktuell ist.
+
+3. **MongoDB Atlas IP Whitelist.** Für lokale Entwicklung ist "Allow Access from
+   Anywhere" (`0.0.0.0/0`) unter Network Access eingetragen, damit es nicht bei
+   jedem IP-Wechsel (anderes WLAN etc.) einen Verbindungsfehler gibt.
+
+4. **Threshold ist noch nicht fein justiert.** `SIMILARITY_THRESHOLD = 0.75` in
+   `blocks.js` ist ein erster Schätzwert. Bei Tests wurden Folgefragen zum selben
+   Thema teilweise als eigene Blöcke erkannt, obwohl sie zusammengehören sollten.
+   Das braucht mehr Testdaten und iteratives Anpassen — kein Grund zur Sorge, ist
+   erwarteter nächster Schritt.
+
+5. **Zwei Remotes.** `git push origin promptblocks-feature` UND
+   `git push repo promptblocks-feature` — beide pushen, origin ist der eigene Fork,
+   repo ist die Betreuer-Repo. Immer beide aktuell halten.
+
+## Code-Stil
+
+- Variablen- und Funktionsnamen, Kommentare: einfaches Englisch oder einfaches
+  Deutsch, keine komplizierten Wörter, wie ein Student schreiben würde — nicht wie
+  eine KI, die alles perfekt dokumentiert. Wenig Kommentare, nur wo es später beim
+  Wiederlesen hilft.
+- Kleine, einfache Funktionen bevorzugen, keine übertriebene Abstraktion.
+- Deutsche UI-Texte (Zusammenfassung generieren, Alle Nachrichten, usw.), da die
+  Bachelorarbeit auf Deutsch geschrieben wird.
+
+## Nächste Schritte (grob, noch nicht fest geplant)
+
+- Threshold der Block-Erkennung feinjustieren
+- Alte Dummy-Daten (`blocksData.ts`) aufräumen, wo nicht mehr gebraucht
+- "Zusammenfassung generieren" Button an echten LLM-Call anbinden (aktuell nur
+  Platzhalter-Text oder noch gar nicht verbunden — prüfen)
+- Evtl. Vollbild-Panel und kleines SidePanel besser synchronisieren (aktuell zwei
+  leicht unterschiedliche Implementierungen mit teils altem Dummy-Code)
+- Nutzerstudie ist noch NICHT durchgeführt — im Thesis-Text immer Futur/Konjunktiv
+  verwenden für Study Design, Results, Discussion, nie Vergangenheitsform

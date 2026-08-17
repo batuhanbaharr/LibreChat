@@ -1,21 +1,27 @@
 import { useState } from 'react';
-import { FileText, MessageSquare, Sparkles, History } from 'lucide-react';
-interface PromptBlock {
-  id: string;
-  title: string;
-  detectedAt: string;
-  messageCount: number;
+import { useNavigate } from 'react-router-dom';
+import { FileText, MessageSquare, Sparkles, History, ArrowRight } from 'lucide-react';
+import { encodeBlockId } from 'librechat-data-provider';
+import { useGetBlocksQuery } from '~/data-provider';
+import type { TDetectedBlock } from 'librechat-data-provider';
+
+function formatTime(detectedAt: string): string {
+  return new Date(detectedAt).toLocaleTimeString('de-DE', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 }
-// fake daten später durch echte erkennung ersetzen
-const dummyBlocks: PromptBlock[] = [
-  { id: '1', title: 'React Hooks Debugging', detectedAt: '09:14', messageCount: 6 },
-  { id: '2', title: 'LibreChat Setup', detectedAt: '09:42', messageCount: 12 },
-  { id: '3', title: 'MongoDB Verbindung', detectedAt: '10:05', messageCount: 4 },
-];
+
 export default function PromptBlocksPanel() {
-  const [selectedBlock, setSelectedBlock] = useState<PromptBlock | null>(null);
+  const navigate = useNavigate();
+  const { data, isLoading, error } = useGetBlocksQuery();
+  const blocks = data?.blocks ?? [];
+
+  const [selectedBlock, setSelectedBlock] = useState<TDetectedBlock | null>(null);
 
   if (selectedBlock) {
+    const blockId = encodeBlockId(selectedBlock.conversationId, selectedBlock.detectedAt);
+
     return (
       <div className="flex h-full flex-col p-4 text-text-primary">
         <button
@@ -27,23 +33,45 @@ export default function PromptBlocksPanel() {
 
         <h3 className="mb-1 text-lg font-semibold">{selectedBlock.title}</h3>
         <p className="mb-4 text-xs text-text-secondary">
-          Erkannt um {selectedBlock.detectedAt} Uhr · {selectedBlock.messageCount} Nachrichten
+          Erkannt um {formatTime(selectedBlock.detectedAt)} Uhr · {selectedBlock.messageCount}{' '}
+          Nachrichten
         </p>
 
         <div className="flex flex-col gap-2">
-          <button className="flex items-center gap-2 rounded-lg border border-border-medium px-3 py-2 text-sm hover:bg-surface-hover">
+          <button
+            onClick={() => navigate(`/c/${selectedBlock.conversationId}`)}
+            className="flex items-center gap-2 rounded-lg border border-border-medium px-3 py-2 text-sm hover:bg-surface-hover"
+          >
+            <MessageSquare size={16} />
+            Zum Chat
+            <ArrowRight size={14} className="ml-auto" />
+          </button>
+
+          <button
+            onClick={() => navigate(`/blocks/${blockId}/summary`)}
+            className="flex items-center gap-2 rounded-lg border border-border-medium px-3 py-2 text-sm hover:bg-surface-hover"
+          >
             <Sparkles size={16} />
             Zusammenfassung generieren
           </button>
-          <button className="flex items-center gap-2 rounded-lg border border-border-medium px-3 py-2 text-sm hover:bg-surface-hover">
+          <button
+            onClick={() => navigate(`/blocks/${blockId}/messages`)}
+            className="flex items-center gap-2 rounded-lg border border-border-medium px-3 py-2 text-sm hover:bg-surface-hover"
+          >
             <MessageSquare size={16} />
             Alle Nachrichten
           </button>
-          <button className="flex items-center gap-2 rounded-lg border border-border-medium px-3 py-2 text-sm hover:bg-surface-hover">
+          <button
+            onClick={() => navigate(`/blocks/${blockId}/prompts`)}
+            className="flex items-center gap-2 rounded-lg border border-border-medium px-3 py-2 text-sm hover:bg-surface-hover"
+          >
             <FileText size={16} />
             Alle Prompts
           </button>
-          <button className="flex items-center gap-2 rounded-lg border border-border-medium px-3 py-2 text-sm hover:bg-surface-hover">
+          <button
+            onClick={() => navigate(`/blocks/${blockId}/history`)}
+            className="flex items-center gap-2 rounded-lg border border-border-medium px-3 py-2 text-sm hover:bg-surface-hover"
+          >
             <History size={16} />
             History
           </button>
@@ -51,20 +79,29 @@ export default function PromptBlocksPanel() {
       </div>
     );
   }
+
   return (
     <div className="flex h-full flex-col p-4 text-text-primary">
       <h3 className="mb-3 text-lg font-semibold">Erkannte Blöcke</h3>
 
+      {isLoading && <p className="text-sm text-text-secondary">Blöcke werden erkannt...</p>}
+
+      {error != null && <p className="text-sm text-red-500">Fehler beim Laden der Blöcke.</p>}
+
+      {!isLoading && error == null && blocks.length === 0 && (
+        <p className="text-sm text-text-secondary">Noch keine Blöcke erkannt.</p>
+      )}
+
       <div className="flex flex-col gap-2">
-        {dummyBlocks.map((block) => (
+        {blocks.map((block) => (
           <button
-            key={block.id}
+            key={block.conversationId + block.detectedAt}
             onClick={() => setSelectedBlock(block)}
             className="flex flex-col items-start rounded-lg border border-border-medium p-3 text-left hover:bg-surface-hover"
           >
             <span className="text-sm font-medium">{block.title}</span>
             <span className="mt-1 text-xs text-text-secondary">
-              {block.detectedAt} Uhr · {block.messageCount} Nachrichten
+              {formatTime(block.detectedAt)} Uhr · {block.messageCount} Nachrichten
             </span>
           </button>
         ))}

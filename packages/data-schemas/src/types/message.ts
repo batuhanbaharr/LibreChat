@@ -17,6 +17,8 @@ export interface IMessage extends Document {
   sender?: string;
   text?: string;
   summary?: string;
+  /** gemini embedding für die block-erkennung, wird einmal berechnet und dann gecacht */
+  blockEmbedding?: number[];
   isCreatedByUser: boolean;
   isTemporary?: boolean;
   unfinished?: boolean;

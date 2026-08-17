@@ -1389,3 +1389,16 @@ export interface ActiveJobsResponse {
 export const getActiveJobs = (): Promise<ActiveJobsResponse> => {
   return request.get(endpoints.activeJobs());
 };
+
+/* Blocks */
+export const getBlocks = (): Promise<q.BlocksResponse> => {
+  return request.get(endpoints.blocks());
+};
+
+export const getBlockMessages = (blockId: string): Promise<q.BlockMessagesResponse> => {
+  return request.get(endpoints.blockMessages(blockId));
+};
+
+export const getBlockSummary = (blockId: string): Promise<q.BlockSummaryResponse> => {
+  return request.get(endpoints.blockSummary(blockId));
+};

@@ -1,4 +1,4 @@
-import { useMemo, memo, type FC, useCallback, useEffect, useRef } from 'react';
+import { useMemo, memo, type FC, useCallback, useEffect, useRef, useState } from 'react';
 import throttle from 'lodash/throttle';
 import { useRecoilValue } from 'recoil';
 import { ChevronDown } from 'lucide-react';
@@ -6,7 +6,7 @@ import { QueryKeys } from 'librechat-data-provider';
 import { useQueryClient } from '@tanstack/react-query';
 import { List, CellMeasurer, CellMeasurerCache } from 'react-virtualized';
 import { Spinner, TooltipAnchor, NewChatIcon, useMediaQuery } from '@librechat/client';
-import type { TConversation } from 'librechat-data-provider';
+import type { TConversation, TDetectedBlock } from 'librechat-data-provider';
 import {
   useLocalize,
   TranslationKeys,
@@ -17,7 +17,8 @@ import {
 } from '~/hooks';
 import { groupConversationsByDate, clearMessagesCache, cn } from '~/utils';
 import FavoritesList from '~/components/Nav/Favorites/FavoritesList';
-import { useActiveJobs } from '~/data-provider';
+import { useActiveJobs, useBlocksByConversation } from '~/data-provider';
+import ConvoBlocksList from './ConvoBlocksList';
 import Convo from './Convo';
 import store from '~/store';
 
@@ -177,6 +178,7 @@ type FlattenedItem =
   | { type: 'pinned-convo'; convo: TConversation }
   | { type: 'header'; groupName: string }
   | { type: 'convo'; convo: TConversation }
+  | { type: 'convo-blocks'; convo: TConversation; blocks: TDetectedBlock[] }
   | { type: 'loading' };
 
 const Conversations: FC<ConversationsProps> = ({
@@ -212,6 +214,21 @@ const Conversations: FC<ConversationsProps> = ({
     [activeJobsData?.activeJobIds],
   );
 
+  // liest die schon geladenen blocks aus dem query cache, kein extra request
+  const blocksByConversation = useBlocksByConversation();
+  const [expandedConvoIds, setExpandedConvoIds] = useState<Set<string>>(() => new Set());
+  const onToggleBlocksExpand = useCallback((conversationId: string) => {
+    setExpandedConvoIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(conversationId)) {
+        next.delete(conversationId);
+      } else {
+        next.add(conversationId);
+      }
+      return next;
+    });
+  }, []);
+
   // Determine if FavoritesList will render content
   const shouldShowFavorites =
     showFavorites &&
@@ -235,6 +252,18 @@ const Conversations: FC<ConversationsProps> = ({
     [filteredConversations],
   );
 
+  // fügt nach einer convo noch ihre blocks-liste ein, falls aufgeklappt und mehr als 1 block da ist
+  const pushConvoWithBlocks = useCallback(
+    (items: FlattenedItem[], type: 'convo' | 'pinned-convo', convo: TConversation) => {
+      items.push({ type, convo } as FlattenedItem);
+      const blocks = blocksByConversation.get(convo.conversationId ?? '');
+      if (blocks && blocks.length > 1 && expandedConvoIds.has(convo.conversationId ?? '')) {
+        items.push({ type: 'convo-blocks', convo, blocks });
+      }
+    },
+    [blocksByConversation, expandedConvoIds],
+  );
+
   const flattenedItems = useMemo(() => {
     const items: FlattenedItem[] = [];
     // Only include favorites row if FavoritesList will render content
@@ -245,14 +274,16 @@ const Conversations: FC<ConversationsProps> = ({
     if (isChatsExpanded) {
       if (!search.query && pinnedConversations.length > 0) {
         items.push({ type: 'pinned-header' });
-        items.push(
-          ...pinnedConversations.map((convo) => ({ type: 'pinned-convo' as const, convo })),
-        );
+        for (const convo of pinnedConversations) {
+          pushConvoWithBlocks(items, 'pinned-convo', convo);
+        }
       }
 
       groupedConversations.forEach(([groupName, convos]) => {
         items.push({ type: 'header', groupName });
-        items.push(...convos.map((convo) => ({ type: 'convo' as const, convo })));
+        for (const convo of convos) {
+          pushConvoWithBlocks(items, 'convo', convo);
+        }
       });
 
       if (isLoading) {
@@ -267,6 +298,7 @@ const Conversations: FC<ConversationsProps> = ({
     isChatsExpanded,
     shouldShowFavorites,
     search.query,
+    pushConvoWithBlocks,
   ]);
 
   // Store flattenedItems in a ref for keyMapper to access without recreating cache
@@ -299,6 +331,9 @@ const Conversations: FC<ConversationsProps> = ({
           }
           if (item.type === 'convo') {
             return `convo-${item.convo.conversationId}`;
+          }
+          if (item.type === 'convo-blocks') {
+            return `convo-blocks-${item.convo.conversationId}`;
           }
           if (item.type === 'loading') {
             return 'loading';
@@ -395,6 +430,8 @@ const Conversations: FC<ConversationsProps> = ({
 
       if (item.type === 'pinned-convo') {
         const isGenerating = activeJobIds.has(item.convo.conversationId ?? '');
+        const convoId = item.convo.conversationId ?? '';
+        const blocks = blocksByConversation.get(convoId);
         return (
           <MeasuredRow key={key} {...rowProps}>
             <Convo
@@ -402,6 +439,9 @@ const Conversations: FC<ConversationsProps> = ({
               retainView={moveToTop}
               toggleNav={toggleNav}
               isGenerating={isGenerating}
+              hasMultipleBlocks={(blocks?.length ?? 0) > 1}
+              isBlocksExpanded={expandedConvoIds.has(convoId)}
+              onToggleBlocksExpand={onToggleBlocksExpand}
             />
           </MeasuredRow>
         );
@@ -421,6 +461,8 @@ const Conversations: FC<ConversationsProps> = ({
 
       if (item.type === 'convo') {
         const isGenerating = activeJobIds.has(item.convo.conversationId ?? '');
+        const convoId = item.convo.conversationId ?? '';
+        const blocks = blocksByConversation.get(convoId);
         return (
           <MeasuredRow key={key} {...rowProps}>
             <Convo
@@ -428,14 +470,36 @@ const Conversations: FC<ConversationsProps> = ({
               retainView={moveToTop}
               toggleNav={toggleNav}
               isGenerating={isGenerating}
+              hasMultipleBlocks={(blocks?.length ?? 0) > 1}
+              isBlocksExpanded={expandedConvoIds.has(convoId)}
+              onToggleBlocksExpand={onToggleBlocksExpand}
             />
+          </MeasuredRow>
+        );
+      }
+
+      if (item.type === 'convo-blocks') {
+        return (
+          <MeasuredRow key={key} {...rowProps}>
+            <ConvoBlocksList blocks={item.blocks} />
           </MeasuredRow>
         );
       }
 
       return null;
     },
-    [cache, flattenedItems, moveToTop, toggleNav, isSmallScreen, pinnedConversations, activeJobIds],
+    [
+      cache,
+      flattenedItems,
+      moveToTop,
+      toggleNav,
+      isSmallScreen,
+      pinnedConversations,
+      activeJobIds,
+      blocksByConversation,
+      expandedConvoIds,
+      onToggleBlocksExpand,
+    ],
   );
 
   const getRowHeight = useCallback(

@@ -21,6 +21,8 @@ import { createAuditLogModel } from './auditLog';
 import { createSessionModel } from './session';
 import { createBalanceModel } from './balance';
 import { createMessageModel } from './message';
+import { createBlockDecisionModel } from './blockDecision';
+import { createBlockSummaryModel } from './blockSummary';
 import { createActionModel } from './action';
 import { createBannerModel } from './banner';
 import { createPresetModel } from './preset';
@@ -47,6 +49,8 @@ export function createModels(mongoose: typeof import('mongoose')): {
   Conversation: ReturnType<typeof createConversationModel>;
   ChatProject: ReturnType<typeof createChatProjectModel>;
   Message: ReturnType<typeof createMessageModel>;
+  BlockDecision: ReturnType<typeof createBlockDecisionModel>;
+  BlockSummary: ReturnType<typeof createBlockSummaryModel>;
   Agent: ReturnType<typeof createAgentModel>;
   AgentApiKey: ReturnType<typeof createAgentApiKeyModel>;
   AgentCategory: ReturnType<typeof createAgentCategoryModel>;
@@ -86,6 +90,8 @@ export function createModels(mongoose: typeof import('mongoose')): {
     Conversation: createConversationModel(mongoose),
     ChatProject: createChatProjectModel(mongoose),
     Message: createMessageModel(mongoose),
+    BlockDecision: createBlockDecisionModel(mongoose),
+    BlockSummary: createBlockSummaryModel(mongoose),
     Agent: createAgentModel(mongoose),
     AgentApiKey: createAgentApiKeyModel(mongoose),
     AgentCategory: createAgentCategoryModel(mongoose),

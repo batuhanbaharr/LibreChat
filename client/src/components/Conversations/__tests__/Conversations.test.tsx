@@ -90,6 +90,7 @@ jest.mock('@librechat/client', () => ({
 
 jest.mock('~/data-provider', () => ({
   useActiveJobs: () => ({ data: undefined }),
+  useBlocksByConversation: () => new Map(),
 }));
 
 jest.mock('~/utils', () => ({

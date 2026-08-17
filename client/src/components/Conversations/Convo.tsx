@@ -1,5 +1,5 @@
 import React, { memo, useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { Pin } from 'lucide-react';
+import { Pin, ChevronRight } from 'lucide-react';
 import { useRecoilValue } from 'recoil';
 import { useParams } from 'react-router-dom';
 import { Constants } from 'librechat-data-provider';
@@ -21,6 +21,9 @@ interface ConversationProps {
   retainView: () => void;
   toggleNav: () => void;
   isGenerating?: boolean;
+  hasMultipleBlocks?: boolean;
+  isBlocksExpanded?: boolean;
+  onToggleBlocksExpand?: (conversationId: string) => void;
 }
 
 function Conversation({
@@ -28,6 +31,9 @@ function Conversation({
   retainView,
   toggleNav,
   isGenerating = false,
+  hasMultipleBlocks = false,
+  isBlocksExpanded = false,
+  onToggleBlocksExpand,
 }: ConversationProps) {
   const params = useParams();
   const localize = useLocalize();
@@ -255,6 +261,26 @@ function Conversation({
       style={{ cursor: renaming ? 'default' : 'pointer' }}
       data-testid="convo-item"
     >
+      {!renaming && hasMultipleBlocks && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleBlocksExpand?.(conversationId ?? '');
+          }}
+          aria-expanded={isBlocksExpanded}
+          aria-label={localize('com_ui_show_topic_blocks')}
+          className="mr-1 flex h-5 w-5 shrink-0 items-center justify-center rounded text-text-secondary outline-none hover:bg-surface-active-alt hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-black dark:focus-visible:ring-white"
+        >
+          <ChevronRight
+            className={cn(
+              'h-3.5 w-3.5 transition-transform duration-200',
+              isBlocksExpanded && 'rotate-90',
+            )}
+            aria-hidden="true"
+          />
+        </button>
+      )}
       {renaming ? (
         <RenameForm
           titleInput={titleInput}

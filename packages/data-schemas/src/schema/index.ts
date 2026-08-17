@@ -13,6 +13,8 @@ export { default as convoSchema } from './convo';
 export { default as fileSchema } from './file';
 export { default as keySchema } from './key';
 export { default as messageSchema } from './message';
+export { default as blockDecisionSchema } from './blockDecision';
+export { default as blockSummarySchema } from './blockSummary';
 export { default as pluginAuthSchema } from './pluginAuth';
 export { default as presetSchema } from './preset';
 export { default as promptSchema } from './prompt';

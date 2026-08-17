@@ -64,6 +64,9 @@ export enum QueryKeys {
   resourcePermissions = 'resourcePermissions',
   effectivePermissions = 'effectivePermissions',
   graphToken = 'graphToken',
+  blocks = 'blocks',
+  blockMessages = 'blockMessages',
+  blockSummary = 'blockSummary',
   /* MCP Servers */
   mcpServers = 'mcpServers',
   mcpServer = 'mcpServer',
