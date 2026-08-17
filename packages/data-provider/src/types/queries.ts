@@ -259,6 +259,9 @@ export type TDetectedBlock = {
   detectedAt: string;
   conversationId: string;
   messageCount: number;
+  // welche nachrichten (user + bot) zu diesem block gehören - nicht mehr zwingend
+  // zusammenhängend, weil ein block später wieder aufgegriffen werden kann
+  messageIds: string[];
 };
 
 export type BlocksResponse = {

@@ -26,6 +26,16 @@ const EMBEDDINGS: Record<string, number[]> = {
   'wann endete der kalte krieg': [1, 0],
   'wer hat den kalten krieg gewonnen': [0.8397, 0.5431],
   'welche armee ist aktuell die stärkste der welt': [0.3699, 0.9291],
+  // für den reaktivierungs-test: drei komplett verschiedene themen (orthogonal),
+  // die vierte nachricht ist fast identisch mit der ersten (react hooks), aber weit weg
+  // von den beiden themen dazwischen -> soll den ersten block wieder aufnehmen
+  'wie sichere ich eine datenbank': [0, 0, 1],
+  'zurück zu den react hooks': [0.99, 0.1, 0],
+  // für den "kein alter block passt"-test: vier paarweise orthogonale themen (4d)
+  'basisthema eins': [1, 0, 0, 0],
+  'komplett anderes thema zwei': [0, 1, 0, 0],
+  'nochmal ein anderes thema drei': [0, 0, 1, 0],
+  'ein viertes unabhängiges thema': [0, 0, 0, 1],
 };
 
 function fakeGetEmbedding(text: string): Promise<number[]> {
@@ -319,6 +329,61 @@ describe('detectBlocksInConversation', () => {
     expect(blocks).toHaveLength(2);
     expect(deps.tieBreaker.isSameTopic).toHaveBeenCalledTimes(1);
   });
+
+  it('reaktiviert einen frühen block, wenn eine spätere nachricht wieder ans alte thema anknüpft, statt einen neuen block zu öffnen', async () => {
+    const base = new Date('2026-01-01T09:00:00Z');
+    const messages = [
+      msg('wie debugge ich react hooks', true, base),
+      msg('wie verbinde ich mongodb', true, new Date(base.getTime() + 60_000)),
+      msg('wie sichere ich eine datenbank', true, new Date(base.getTime() + 120_000)),
+      // 58 min später, thematisch aber wieder klar bei "react hooks" (nicht beim letzten block)
+      msg('zurück zu den react hooks', true, new Date(base.getTime() + 60 * 60_000)),
+    ];
+
+    const blocks = await detectBlocksInConversation('c1', messages, createTestDeps());
+
+    // kein 4. block - die letzte nachricht hängt sich an den ersten block
+    expect(blocks).toHaveLength(3);
+
+    const reactHooksBlock = blocks.find((b) => b.detectedAt === base.toISOString());
+    expect(reactHooksBlock?.messageCount).toBe(2);
+    expect(reactHooksBlock?.messageIds).toEqual([
+      'wie debugge ich react hooks',
+      'zurück zu den react hooks',
+    ]);
+
+    expect(blocks.find((b) => b.title === 'wie verbinde ich mongodb')?.messageCount).toBe(1);
+    expect(blocks.find((b) => b.title === 'wie sichere ich eine datenbank')?.messageCount).toBe(1);
+  });
+
+  it('öffnet einen neuen block, wenn eine nachricht weder zum aktuellen noch zu einem früheren block passt', async () => {
+    const base = new Date('2026-01-01T09:00:00Z');
+    const messages = [
+      msg('basisthema eins', true, base),
+      msg('komplett anderes thema zwei', true, new Date(base.getTime() + 60_000)),
+      msg('nochmal ein anderes thema drei', true, new Date(base.getTime() + 120_000)),
+      msg('ein viertes unabhängiges thema', true, new Date(base.getTime() + 180_000)),
+    ];
+
+    const blocks = await detectBlocksInConversation('c1', messages, createTestDeps());
+
+    expect(blocks).toHaveLength(4);
+    expect(blocks.map((b) => b.messageCount)).toEqual([1, 1, 1, 1]);
+  });
+
+  it('bleibt bei rein sequentiellen themen ohne wiederaufnahme weiterhin bei getrennten blocks', async () => {
+    const base = new Date('2026-01-01T09:00:00Z');
+    const messages = [
+      msg('wie debugge ich react hooks', true, base),
+      msg('wie verbinde ich mongodb', true, new Date(base.getTime() + 60_000)),
+      msg('wie sichere ich eine datenbank', true, new Date(base.getTime() + 120_000)),
+    ];
+
+    const blocks = await detectBlocksInConversation('c1', messages, createTestDeps());
+
+    expect(blocks).toHaveLength(3);
+    expect(blocks.map((b) => b.messageCount)).toEqual([1, 1, 1]);
+  });
 });
 
 describe('getDetectedBlocksForUser', () => {
@@ -391,6 +456,24 @@ describe('getBlockMessages', () => {
     expect(block2?.map((m) => m.messageId)).toEqual([
       'wie verbinde ich mongodb',
       'eine andere antwort',
+    ]);
+  });
+
+  it('gibt auch nicht-zusammenhängende nachrichten zurück, wenn ein block später wieder aufgegriffen wurde', async () => {
+    const base = new Date('2026-01-01T09:00:00Z');
+    const messages = [
+      msg('wie debugge ich react hooks', true, base),
+      msg('wie verbinde ich mongodb', true, new Date(base.getTime() + 60_000)),
+      msg('wie sichere ich eine datenbank', true, new Date(base.getTime() + 120_000)),
+      msg('zurück zu den react hooks', true, new Date(base.getTime() + 60 * 60_000)),
+    ];
+    const deps = createDeps(jest.fn().mockResolvedValue(messages));
+
+    const result = await getBlockMessages('u1', 'c1', base.toISOString(), deps);
+
+    expect(result?.map((m) => m.messageId)).toEqual([
+      'wie debugge ich react hooks',
+      'zurück zu den react hooks',
     ]);
   });
 

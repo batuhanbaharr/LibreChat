@@ -38,12 +38,25 @@ function isUserMessageWithText(message: BlockSourceMessage): message is UserMess
   return message.isCreatedByUser && Boolean(message.text) && message.createdAt instanceof Date;
 }
 
-function startBlock(message: UserMessage, conversationId: string): TDetectedBlock {
+// block während der erkennung noch "im bau" - anchor und centroid werden am ende
+// wieder abgeschnitten, die landen nicht im TDetectedBlock nach außen
+interface WorkingBlock {
+  title: string;
+  detectedAt: string;
+  conversationId: string;
+  messageCount: number;
+  anchor: UserMessage;
+  centroid: Centroid | null;
+}
+
+function startWorkingBlock(message: UserMessage, conversationId: string): WorkingBlock {
   return {
     title: message.text.slice(0, 60),
     detectedAt: message.createdAt.toISOString(),
     conversationId,
     messageCount: 1,
+    anchor: message,
+    centroid: null,
   };
 }
 
@@ -95,6 +108,66 @@ async function decideSameBlock(
   return sameTopic;
 }
 
+function attachToBlock(block: WorkingBlock, embedding: number[]): void {
+  block.messageCount += 1;
+  block.centroid = block.centroid
+    ? addToCentroid(block.centroid, embedding)
+    : startCentroid(embedding);
+}
+
+// sucht unter den ANDEREN bisherigen blocks (der aktuelle ist schon durchgefallen) den mit dem
+// höchsten score zur neuen nachricht. blocks ohne centroid (noch keine "richtige" nachricht drin)
+// fallen raus, die können eh nicht verglichen werden
+function findBestPastBlock(
+  blocks: WorkingBlock[],
+  currentIndex: number,
+  embedding: number[],
+  gapMinutes: number,
+): { index: number; score: number } | null {
+  let best: { index: number; score: number } | null = null;
+
+  for (let i = 0; i < blocks.length; i++) {
+    if (i === currentIndex) {
+      continue;
+    }
+    const centroid = blocks[i].centroid;
+    if (!centroid) {
+      continue;
+    }
+    const score = hybridScore(cosineSimilarity(centroidVector(centroid), embedding), gapMinutes);
+    if (!best || score > best.score) {
+      best = { index: i, score };
+    }
+  }
+
+  return best;
+}
+
+// ordnet jeder nachricht (auch bot-antworten und kurze bestätigungen) die id ihres blocks zu.
+// user-nachrichten mit bekannter zuordnung (assignedBlock) setzen den "aktiven" block, alles
+// andere (bot-antworten usw) hängt sich einfach an den zuletzt aktiven block dran - genau wie
+// eine bot-antwort chronologisch direkt auf die user-frage folgt, die sie beantwortet
+function collectMessageIds(
+  messages: BlockSourceMessage[],
+  assignedBlock: Map<string, number>,
+  blockCount: number,
+): string[][] {
+  const messageIds: string[][] = Array.from({ length: blockCount }, () => []);
+  let activeIndex: number | null = null;
+
+  for (const message of messages) {
+    const assigned = assignedBlock.get(message.messageId);
+    if (assigned !== undefined) {
+      activeIndex = assigned;
+    }
+    if (activeIndex !== null) {
+      messageIds[activeIndex].push(message.messageId);
+    }
+  }
+
+  return messageIds;
+}
+
 export async function detectBlocksInConversation(
   conversationId: string,
   messages: BlockSourceMessage[],
@@ -106,13 +179,15 @@ export async function detectBlocksInConversation(
     return [];
   }
 
-  const blocks: TDetectedBlock[] = [];
-  let currentBlock = startBlock(userMessages[0], conversationId);
-  let blockAnchor = userMessages[0];
+  const blocks: WorkingBlock[] = [startWorkingBlock(userMessages[0], conversationId)];
+  // welcher block bekommt gerade kurze/unklare nachrichten und ist der erste vergleichspunkt
+  let currentBlockIndex = 0;
   let lastMessageTime = userMessages[0].createdAt;
+  // messageId -> index in blocks, für collectMessageIds am ende
+  const assignedBlock = new Map<string, number>([[userMessages[0].messageId, 0]]);
 
   // centroid ist null solange noch keine einzige "richtige" nachricht im block embedded wurde
-  let centroid: Centroid | null = isTooShortToEmbed(userMessages[0].text)
+  blocks[0].centroid = isTooShortToEmbed(userMessages[0].text)
     ? null
     : startCentroid(await getOrComputeEmbedding(userMessages[0], deps));
 
@@ -121,34 +196,56 @@ export async function detectBlocksInConversation(
 
     if (isTooShortToEmbed(message.text)) {
       // "ok", "danke" usw -> gehört einfach zum aktuellen block, kein embedding nötig
-      currentBlock.messageCount += 1;
+      blocks[currentBlockIndex].messageCount += 1;
+      assignedBlock.set(message.messageId, currentBlockIndex);
       lastMessageTime = message.createdAt;
       continue;
     }
 
     const embedding = await getOrComputeEmbedding(message, deps);
     const gapMinutes = minutesBetween(lastMessageTime, message.createdAt);
-    const score = centroid
-      ? hybridScore(cosineSimilarity(centroidVector(centroid), embedding), gapMinutes)
+    const current = blocks[currentBlockIndex];
+    const currentScore = current.centroid
+      ? hybridScore(cosineSimilarity(centroidVector(current.centroid), embedding), gapMinutes)
       : null;
 
-    const staysInBlock = await decideSameBlock(score, blockAnchor, message, deps);
+    const staysInCurrent = await decideSameBlock(currentScore, current.anchor, message, deps);
 
-    if (staysInBlock) {
-      currentBlock.messageCount += 1;
-      centroid = centroid ? addToCentroid(centroid, embedding) : startCentroid(embedding);
+    if (staysInCurrent) {
+      attachToBlock(current, embedding);
+      assignedBlock.set(message.messageId, currentBlockIndex);
     } else {
-      blocks.push(currentBlock);
-      currentBlock = startBlock(message, conversationId);
-      blockAnchor = message;
-      centroid = startCentroid(embedding);
+      // aktueller block passt nicht mehr - vielleicht knüpft die nachricht statt an einen
+      // neuen block an ein früheres thema an, das gerade wieder aufgegriffen wird
+      const bestPast = findBestPastBlock(blocks, currentBlockIndex, embedding, gapMinutes);
+      const reactivated =
+        bestPast !== null &&
+        (await decideSameBlock(bestPast.score, blocks[bestPast.index].anchor, message, deps));
+
+      if (bestPast !== null && reactivated) {
+        attachToBlock(blocks[bestPast.index], embedding);
+        assignedBlock.set(message.messageId, bestPast.index);
+        currentBlockIndex = bestPast.index;
+      } else {
+        blocks.push(startWorkingBlock(message, conversationId));
+        currentBlockIndex = blocks.length - 1;
+        blocks[currentBlockIndex].centroid = startCentroid(embedding);
+        assignedBlock.set(message.messageId, currentBlockIndex);
+      }
     }
 
     lastMessageTime = message.createdAt;
   }
 
-  blocks.push(currentBlock);
-  return blocks;
+  const messageIds = collectMessageIds(messages, assignedBlock, blocks.length);
+
+  return blocks.map((block, index) => ({
+    title: block.title,
+    detectedAt: block.detectedAt,
+    conversationId: block.conversationId,
+    messageCount: block.messageCount,
+    messageIds: messageIds[index],
+  }));
 }
 
 export interface BlockMessage {
@@ -164,15 +261,9 @@ function hasTextAndDate(message: BlockSourceMessage): message is MessageWithText
   return Boolean(message.text) && message.createdAt instanceof Date;
 }
 
-function isInRange(createdAt: Date, start: Date, end: Date | null): boolean {
-  if (createdAt < start) {
-    return false;
-  }
-  return end === null || createdAt < end;
-}
-
 // holt alle echten nachrichten (user + bot) die zu einem block gehören. läuft die block-erkennung
-// nochmal für die eine konversation (dank cache günstig) um die start/end zeit des blocks zu finden
+// nochmal für die eine konversation (dank cache günstig) und nutzt die explizite messageIds-liste
+// statt eines zeitfensters, weil ein wieder aufgegriffener block nicht mehr zusammenhängend ist
 export async function getBlockMessages(
   userId: string,
   conversationId: string,
@@ -185,20 +276,19 @@ export async function getBlockMessages(
   }
 
   const blocks = await detectBlocksInConversation(conversationId, messages, deps);
-  const blockIndex = blocks.findIndex((b) => b.detectedAt === detectedAt);
-  if (blockIndex === -1) {
+  const block = blocks.find((b) => b.detectedAt === detectedAt);
+  if (!block) {
     return null;
   }
 
-  const start = new Date(blocks[blockIndex].detectedAt);
-  const end = blockIndex + 1 < blocks.length ? new Date(blocks[blockIndex + 1].detectedAt) : null;
+  const memberIds = new Set(block.messageIds);
 
   // BlockSourceMessage ist ein subset von IMessage, damit hasTextAndDate den typ richtig einengt
   const sourceMessages: BlockSourceMessage[] = messages;
 
   return sourceMessages
     .filter(hasTextAndDate)
-    .filter((m) => isInRange(m.createdAt, start, end))
+    .filter((m) => memberIds.has(m.messageId))
     .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
     .map((m) => ({
       messageId: m.messageId,
