@@ -19,6 +19,8 @@ export interface IMessage extends Document {
   summary?: string;
   /** gemini embedding für die block-erkennung, wird einmal berechnet und dann gecacht */
   blockEmbedding?: number[];
+  /** ob die nachricht in "Alle Nachrichten"/"Alle Prompts" markiert wurde */
+  starred?: boolean;
   isCreatedByUser: boolean;
   isTemporary?: boolean;
   unfinished?: boolean;

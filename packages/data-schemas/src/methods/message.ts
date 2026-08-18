@@ -64,6 +64,10 @@ export interface MessageMethods {
   ): Promise<unknown>;
   deleteMessages(filter: FilterQuery<IMessage>): Promise<DeleteResult>;
   setMessageBlockEmbedding(messageId: string, embedding: number[]): Promise<void>;
+  setMessageStarred(
+    userId: string,
+    params: { messageId: string; starred: boolean },
+  ): Promise<void>;
 }
 
 export function createMessageMethods(mongoose: typeof import('mongoose')): MessageMethods {
@@ -373,6 +377,21 @@ export function createMessageMethods(mongoose: typeof import('mongoose')): Messa
     }
   }
 
+  // markiert/entmarkiert eine nachricht für die "Alle Nachrichten"/"Alle Prompts" ansichten,
+  // gefiltert auf den eigenen user damit niemand fremde nachrichten markieren kann
+  async function setMessageStarred(
+    userId: string,
+    { messageId, starred }: { messageId: string; starred: boolean },
+  ): Promise<void> {
+    try {
+      const Message = mongoose.models.Message as Model<IMessage>;
+      await Message.updateOne({ messageId, user: userId }, { starred });
+    } catch (err) {
+      logger.error('Error starring message:', err);
+      throw err;
+    }
+  }
+
   /**
    * Retrieves a single message from the database.
    */
@@ -464,5 +483,6 @@ export function createMessageMethods(mongoose: typeof import('mongoose')): Messa
     searchMessages,
     deleteMessages,
     setMessageBlockEmbedding,
+    setMessageStarred,
   };
 }

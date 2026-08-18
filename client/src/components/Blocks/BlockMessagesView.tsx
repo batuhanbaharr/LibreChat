@@ -11,7 +11,7 @@ export default function BlockMessagesView() {
   const conversationId = blockId ? decodeBlockId(blockId)?.conversationId : undefined;
 
   return (
-    <div className="mx-auto max-w-2xl p-8 text-text-primary">
+    <div className="mx-auto h-full max-w-2xl overflow-y-auto p-8 text-text-primary">
       <Link
         to={`/blocks/${blockId}`}
         className="mb-6 inline-block text-sm text-text-secondary hover:text-text-primary"
@@ -30,6 +30,7 @@ export default function BlockMessagesView() {
           emptyText="Keine Nachrichten in diesem Block."
           conversationId={conversationId}
           preview
+          enableStarring
         />
       )}
     </div>

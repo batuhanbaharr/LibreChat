@@ -47,7 +47,7 @@ type BlockDetectionDeps = Pick<
 
 type BlockSourceMessage = Pick<
   IMessage,
-  'messageId' | 'text' | 'content' | 'isCreatedByUser' | 'createdAt' | 'blockEmbedding'
+  'messageId' | 'text' | 'content' | 'isCreatedByUser' | 'createdAt' | 'blockEmbedding' | 'starred'
 >;
 type UserMessage = BlockSourceMessage & { text: string; createdAt: Date };
 
@@ -349,6 +349,7 @@ export interface BlockMessage {
   // warum diese nachricht in ihrem block gelandet ist - null bei bot-antworten, die
   // treffen ja keine block-entscheidung, sie hängen sich nur an die user-frage davor
   reasoning: BlockJoinReasoning | null;
+  starred?: boolean;
 }
 
 type MessageWithText = BlockSourceMessage & { text: string; createdAt: Date };
@@ -413,6 +414,7 @@ function getBlockMemberMessages(
       isCreatedByUser: m.isCreatedByUser,
       createdAt: m.createdAt.toISOString(),
       reasoning: reasoningByMessage.get(m.messageId) ?? null,
+      starred: Boolean(m.starred),
     }));
 }
 

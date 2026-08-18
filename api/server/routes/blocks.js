@@ -17,6 +17,7 @@ const {
   saveBlockSummary,
   getBlockTitle,
   saveBlockTitle,
+  setMessageStarred,
 } = require('~/models');
 
 const router = express.Router();
@@ -40,10 +41,12 @@ const handlers = createBlocksHandlers({
   titleGenerator,
   getBlockTitle,
   saveBlockTitle,
+  setMessageStarred,
 });
 
 router.get('/', requireJwtAuth, handlers.getBlocks);
 router.get('/:blockId/messages', requireJwtAuth, handlers.getMessages);
 router.get('/:blockId/summary', requireJwtAuth, handlers.getSummary);
+router.patch('/messages/:messageId/star', requireJwtAuth, handlers.setStarred);
 
 module.exports = router;

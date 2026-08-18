@@ -63,6 +63,10 @@ const messageSchema: Schema<IMessage> = new Schema(
       type: [Number],
       select: false,
     },
+    starred: {
+      type: Boolean,
+      default: false,
+    },
     isCreatedByUser: {
       type: Boolean,
       required: true,

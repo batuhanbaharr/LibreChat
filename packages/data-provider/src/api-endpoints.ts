@@ -532,3 +532,5 @@ export const blockMessages = (blockId: string) =>
   `${BASE_URL}/api/blocks/${encodeURIComponent(blockId)}/messages`;
 export const blockSummary = (blockId: string) =>
   `${BASE_URL}/api/blocks/${encodeURIComponent(blockId)}/summary`;
+export const blockMessageStar = (messageId: string) =>
+  `${BASE_URL}/api/blocks/messages/${encodeURIComponent(messageId)}/star`;

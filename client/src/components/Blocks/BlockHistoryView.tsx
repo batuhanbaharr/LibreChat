@@ -8,6 +8,11 @@ export default function BlockHistoryView() {
   const { data, isLoading, error } = useBlockMessagesQuery(blockId);
   const { data: blocksData } = useGetBlocksQuery();
 
+  // die history soll zeigen, wie die PROMPTS über die zeit zu blocks wurden - die vollen
+  // antworten stehen schon in "Alle Nachrichten", hier würden sie nur vom eigentlichen
+  // punkt (der block-zuordnung) ablenken
+  const prompts = (data?.messages ?? []).filter((m) => m.isCreatedByUser);
+
   const decoded = blockId ? decodeBlockId(blockId) : null;
   const blockTitle = decoded
     ? blocksData?.blocks.find(
@@ -16,7 +21,7 @@ export default function BlockHistoryView() {
     : undefined;
 
   return (
-    <div className="mx-auto max-w-2xl p-8 text-text-primary">
+    <div className="mx-auto h-full max-w-2xl overflow-y-auto p-8 text-text-primary">
       <Link
         to={`/blocks/${blockId}`}
         className="mb-6 inline-block text-sm text-text-secondary hover:text-text-primary"
@@ -34,9 +39,8 @@ export default function BlockHistoryView() {
 
       {!isLoading && error == null && (
         <BlockMessageList
-          messages={data?.messages ?? []}
+          messages={prompts}
           emptyText="Keine History für diesen Block."
-          showRole
           showReasoning
           blockTitle={blockTitle}
         />

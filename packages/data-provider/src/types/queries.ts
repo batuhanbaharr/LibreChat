@@ -286,6 +286,7 @@ export type TBlockMessage = {
   createdAt: string;
   // null bei bot-antworten, die treffen ja keine block-entscheidung
   reasoning: TBlockJoinReasoning | null;
+  starred: boolean;
 };
 
 export type BlockMessagesResponse = {

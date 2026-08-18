@@ -1402,3 +1402,10 @@ export const getBlockMessages = (blockId: string): Promise<q.BlockMessagesRespon
 export const getBlockSummary = (blockId: string): Promise<q.BlockSummaryResponse> => {
   return request.get(endpoints.blockSummary(blockId));
 };
+
+export const setBlockMessageStarred = (
+  messageId: string,
+  starred: boolean,
+): Promise<{ messageId: string; starred: boolean }> => {
+  return request.patch(endpoints.blockMessageStar(messageId), { starred });
+};
