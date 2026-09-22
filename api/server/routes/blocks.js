@@ -18,6 +18,9 @@ const {
   getBlockTitle,
   saveBlockTitle,
   setMessageStarred,
+  getAllBlockMemories,
+  addBlockMemory,
+  deleteBlockMemory,
 } = require('~/models');
 
 const router = express.Router();
@@ -42,11 +45,20 @@ const handlers = createBlocksHandlers({
   getBlockTitle,
   saveBlockTitle,
   setMessageStarred,
+  getAllBlockMemories,
+  addBlockMemory,
+  deleteBlockMemory,
 });
 
+const memoryPayloadLimit = express.json({ limit: '32kb' });
+
 router.get('/', requireJwtAuth, handlers.getBlocks);
+// vor /:blockId/... registriert, damit "memory" nicht als blockId durchgeht
+router.get('/memory', requireJwtAuth, handlers.getMemory);
 router.get('/:blockId/messages', requireJwtAuth, handlers.getMessages);
 router.get('/:blockId/summary', requireJwtAuth, handlers.getSummary);
+router.post('/:blockId/memory', requireJwtAuth, memoryPayloadLimit, handlers.addMemory);
+router.delete('/:blockId/memory/:entryId', requireJwtAuth, handlers.deleteMemory);
 router.patch('/messages/:messageId/star', requireJwtAuth, handlers.setStarred);
 
 module.exports = router;

@@ -3,8 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { useSetRecoilState } from 'recoil';
 import { FileText, MessageSquare, Sparkles, History, ArrowRight } from 'lucide-react';
 import { encodeBlockId } from 'librechat-data-provider';
-import { useGetBlocksQuery } from '~/data-provider';
+import { useGetBlocksQuery, useBlockMemoriesQuery } from '~/data-provider';
 import type { TDetectedBlock } from 'librechat-data-provider';
+import { MemoryGalaxy } from '~/components/VisibleMemory';
 import store from '~/store';
 
 function formatTime(detectedAt: string): string {
@@ -22,7 +23,10 @@ export default function PromptBlocksPanel() {
   // konversationswechsel auch, siehe dort
   const setSubmission = useSetRecoilState(store.submissionByIndex(0));
   const { data, isLoading, error } = useGetBlocksQuery();
+  // gleicher query-cache wie die orb-ansicht, kostet also keinen zweiten request
+  const { data: memoryData } = useBlockMemoriesQuery();
   const blocks = data?.blocks ?? [];
+  const memories = memoryData?.memories ?? {};
 
   const [selectedBlock, setSelectedBlock] = useState<TDetectedBlock | null>(null);
 
@@ -91,7 +95,7 @@ export default function PromptBlocksPanel() {
   }
 
   return (
-    <div className="flex h-full flex-col p-4 text-text-primary">
+    <div className="flex h-full flex-col overflow-y-auto p-4 text-text-primary">
       <h3 className="mb-3 text-lg font-semibold">Erkannte Blöcke</h3>
 
       {isLoading && <p className="text-sm text-text-secondary">Blöcke werden erkannt...</p>}
@@ -103,19 +107,29 @@ export default function PromptBlocksPanel() {
       )}
 
       <div className="flex flex-col gap-2">
-        {blocks.map((block) => (
-          <button
-            key={block.conversationId + block.detectedAt}
-            onClick={() => setSelectedBlock(block)}
-            className="flex flex-col items-start rounded-lg border border-border-medium p-3 text-left hover:bg-surface-hover"
-          >
-            <span className="text-sm font-medium">{block.title}</span>
-            <span className="mt-1 text-xs text-text-secondary">
-              {formatTime(block.detectedAt)} Uhr · {block.messageCount} Nachrichten
-            </span>
-          </button>
-        ))}
+        {blocks.map((block) => {
+          const entryCount =
+            memories[encodeBlockId(block.conversationId, block.detectedAt)]?.length ?? 0;
+
+          return (
+            <button
+              key={block.conversationId + block.detectedAt}
+              onClick={() => setSelectedBlock(block)}
+              className="flex flex-col items-start rounded-lg border border-border-medium p-3 text-left hover:bg-surface-hover"
+            >
+              <span className="text-sm font-medium">{block.title}</span>
+              <span className="mt-1 text-xs text-text-secondary">
+                {formatTime(block.detectedAt)} Uhr · {block.messageCount} Nachrichten
+                {/* dieselbe zahl, die der orb unten als fläche kodiert - damit die
+                    information auch ohne das bewegte feld erreichbar bleibt */}
+                {entryCount > 0 && ` · ${entryCount} Einträge`}
+              </span>
+            </button>
+          );
+        })}
       </div>
+
+      <MemoryGalaxy />
     </div>
   );
 }

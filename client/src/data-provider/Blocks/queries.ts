@@ -7,6 +7,7 @@ import type {
   TDetectedBlock,
   BlockMessagesResponse,
   BlockSummaryResponse,
+  BlockMemoriesResponse,
 } from 'librechat-data-provider';
 
 export const useGetBlocksQuery = (
@@ -70,4 +71,21 @@ export const useBlocksByConversation = (): Map<string, TDetectedBlock[]> => {
     }
     return map;
   }, [data?.blocks]);
+};
+
+// alle gedächtnis-einträge aller blöcke in einem request, nach blockId gruppiert.
+// wird beim öffnen des panels geladen und nach jeder mutation invalidiert - block-
+// erkennung selbst ist teuer, hier hängt aber nur gespeicherter nutzerinhalt dran
+export const useBlockMemoriesQuery = (
+  config?: UseQueryOptions<BlockMemoriesResponse>,
+): QueryObserverResult<BlockMemoriesResponse> => {
+  return useQuery<BlockMemoriesResponse>(
+    [QueryKeys.blockMemories],
+    () => dataService.getBlockMemories(),
+    {
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
+      ...config,
+    },
+  );
 };

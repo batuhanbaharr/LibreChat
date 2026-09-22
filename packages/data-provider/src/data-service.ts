@@ -1403,6 +1403,24 @@ export const getBlockSummary = (blockId: string): Promise<q.BlockSummaryResponse
   return request.get(endpoints.blockSummary(blockId));
 };
 
+export const getBlockMemories = (): Promise<q.BlockMemoriesResponse> => {
+  return request.get(endpoints.blockMemories());
+};
+
+export const addBlockMemory = (
+  blockId: string,
+  text: string,
+): Promise<q.AddBlockMemoryResponse> => {
+  return request.post(endpoints.blockMemory(blockId), { text });
+};
+
+export const deleteBlockMemory = (
+  blockId: string,
+  entryId: string,
+): Promise<{ entryId: string }> => {
+  return request.delete(endpoints.blockMemoryEntry(blockId, entryId));
+};
+
 export const setBlockMessageStarred = (
   messageId: string,
   starred: boolean,

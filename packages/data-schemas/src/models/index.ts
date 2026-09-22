@@ -22,6 +22,7 @@ import { createSessionModel } from './session';
 import { createBalanceModel } from './balance';
 import { createMessageModel } from './message';
 import { createBlockDecisionModel } from './blockDecision';
+import { createBlockMemoryModel } from './blockMemory';
 import { createBlockSummaryModel } from './blockSummary';
 import { createBlockTitleModel } from './blockTitle';
 import { createActionModel } from './action';
@@ -51,6 +52,7 @@ export function createModels(mongoose: typeof import('mongoose')): {
   ChatProject: ReturnType<typeof createChatProjectModel>;
   Message: ReturnType<typeof createMessageModel>;
   BlockDecision: ReturnType<typeof createBlockDecisionModel>;
+  BlockMemory: ReturnType<typeof createBlockMemoryModel>;
   BlockSummary: ReturnType<typeof createBlockSummaryModel>;
   BlockTitle: ReturnType<typeof createBlockTitleModel>;
   Agent: ReturnType<typeof createAgentModel>;
@@ -93,6 +95,7 @@ export function createModels(mongoose: typeof import('mongoose')): {
     ChatProject: createChatProjectModel(mongoose),
     Message: createMessageModel(mongoose),
     BlockDecision: createBlockDecisionModel(mongoose),
+    BlockMemory: createBlockMemoryModel(mongoose),
     BlockSummary: createBlockSummaryModel(mongoose),
     BlockTitle: createBlockTitleModel(mongoose),
     Agent: createAgentModel(mongoose),

@@ -296,3 +296,22 @@ export type BlockMessagesResponse = {
 export type BlockSummaryResponse = {
   summary: string;
 };
+
+// an einen erkannten block angehängter gedächtnis-eintrag. der block selbst ist
+// abgeleitet und nicht schreibbar - das hier ist der teil, der wirklich gespeichert wird
+export type TBlockMemoryEntry = {
+  id: string;
+  text: string;
+  tokenCount: number;
+  source: 'user' | 'assistant';
+  createdAt: string;
+};
+
+// nach blockId gruppiert, damit die orb-ansicht alles in einem request bekommt
+export type BlockMemoriesResponse = {
+  memories: Record<string, TBlockMemoryEntry[]>;
+};
+
+export type AddBlockMemoryResponse = {
+  entry: TBlockMemoryEntry;
+};

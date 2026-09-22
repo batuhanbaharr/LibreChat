@@ -46,6 +46,12 @@ import { createPresetMethods, type PresetMethods } from './preset';
 import { createConversationTagMethods, type ConversationTagMethods } from './conversationTag';
 import { createMessageMethods, type MessageMethods } from './message';
 import { createBlockDecisionMethods, type BlockDecisionMethods } from './blockDecision';
+import {
+  createBlockMemoryMethods,
+  type BlockMemoryMethods,
+  type BlockMemoryEntry,
+  type AddBlockMemoryParams,
+} from './blockMemory';
 import { createBlockSummaryMethods, type BlockSummaryMethods } from './blockSummary';
 import { createBlockTitleMethods, type BlockTitleMethods } from './blockTitle';
 import { createConversationMethods, type ConversationMethods } from './conversation';
@@ -148,6 +154,7 @@ export type AllMethods = UserMethods &
   ConversationTagMethods &
   MessageMethods &
   BlockDecisionMethods &
+  BlockMemoryMethods &
   BlockSummaryMethods &
   BlockTitleMethods &
   ConversationMethods &
@@ -282,6 +289,7 @@ export function createMethods(
     ...createConversationTagMethods(mongoose),
     ...messageMethods,
     ...createBlockDecisionMethods(mongoose),
+    ...createBlockMemoryMethods(mongoose),
     ...createBlockSummaryMethods(mongoose),
     ...createBlockTitleMethods(mongoose),
     ...conversationMethods,
@@ -350,4 +358,7 @@ export type {
   SkillSyncMethods,
   AgentMethods,
   ConfigMethods,
+  BlockMemoryMethods,
+  BlockMemoryEntry,
+  AddBlockMemoryParams,
 };

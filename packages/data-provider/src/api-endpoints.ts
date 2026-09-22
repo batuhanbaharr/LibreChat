@@ -534,3 +534,11 @@ export const blockSummary = (blockId: string) =>
   `${BASE_URL}/api/blocks/${encodeURIComponent(blockId)}/summary`;
 export const blockMessageStar = (messageId: string) =>
   `${BASE_URL}/api/blocks/messages/${encodeURIComponent(messageId)}/star`;
+
+export const blockMemories = () => `${BASE_URL}/api/blocks/memory`;
+
+export const blockMemory = (blockId: string) =>
+  `${BASE_URL}/api/blocks/${encodeURIComponent(blockId)}/memory`;
+
+export const blockMemoryEntry = (blockId: string, entryId: string) =>
+  `${BASE_URL}/api/blocks/${encodeURIComponent(blockId)}/memory/${encodeURIComponent(entryId)}`;

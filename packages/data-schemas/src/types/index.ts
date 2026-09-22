@@ -13,6 +13,7 @@ export * from './banner';
 export * from './transaction';
 export * from './message';
 export * from './blockDecision';
+export * from './blockMemory';
 export * from './blockSummary';
 export * from './blockTitle';
 export * from './agent';

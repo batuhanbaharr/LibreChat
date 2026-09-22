@@ -67,6 +67,7 @@ export enum QueryKeys {
   blocks = 'blocks',
   blockMessages = 'blockMessages',
   blockSummary = 'blockSummary',
+  blockMemories = 'blockMemories',
   /* MCP Servers */
   mcpServers = 'mcpServers',
   mcpServer = 'mcpServer',
