@@ -121,10 +121,3 @@ A quick map, if you want to look around:
 - `packages/data-schemas/` — the database models for blocks
 - `api/server/routes/blocks.js` — the API route, thin wrapper around
   `packages/api`
-
-## Thesis analysis
-
-The statistics script and documentation for the user study (UEQ-S and NASA-TLX,
-16 participants) live in [`thesis-analysis/`](thesis-analysis/README.md). The real
-study data is not part of the repository; a synthetic example dataset is included
-so the script can be run.
